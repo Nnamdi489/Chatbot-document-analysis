@@ -1,1 +1,1 @@
-// JavaScript will go here
+// JavaScript
