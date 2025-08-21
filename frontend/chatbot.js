@@ -3,146 +3,83 @@
  * QuickDocs_Chatbot - Frontend Logic
  */
 
-class ChatbotApp {
+class QuickDocsChat {
     constructor() {
-         this.apiBaseUrl = 'https://baa1d9eafc64.ngrok-free.app';
-
-       this.initializeElements();
-        this.bindEvents();
-        this.loadSettings();
-        this.checkSystemStatus();
         
-        console.log('🤖 Chatbot app initialized!');
+        this.apiBaseUrl = 'https://baa1d9eafc64.ngrok-free.app/';
+        this.messages = [];
+        this.initializeElements();
+        this.bindEvents();
     }
 
     initializeElements() {
-        // File upload elements
-        this.fileInput = document.getElementById('fileInput');
-        this.fileUploadZone = document.getElementById('fileUploadZone');
-        this.uploadBtn = document.getElementById('uploadBtn');
-        this.uploadStatus = document.getElementById('uploadStatus');
-        
-        // CMS upload elements
-        this.cmsContent = document.getElementById('cmsContent');
-        this.uploadCmsBtn = document.getElementById('uploadCmsBtn');
-        
-        // Chat elements
-        this.chatInput = document.getElementById('chatInput');
-        this.sendBtn = document.getElementById('sendBtn');
         this.chatMessages = document.getElementById('chatMessages');
-        
-        // Status elements
-        this.serverStatus = document.getElementById('serverStatus');
-        this.documentsCount = document.getElementById('documentsCount');
-        this.lastUpdated = document.getElementById('lastUpdated');
-        
-        // Settings elements
-        this.settingsBtn = document.getElementById('settingsBtn');
-        this.settingsPanel = document.getElementById('settingsPanel');
-        this.closeSettings = document.getElementById('closeSettings');
-        this.apiUrl = document.getElementById('apiUrl');
-        this.saveSettings = document.getElementById('saveSettings');
+        this.chatInput = document.getElementById('chatInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.uploadArea = document.getElementById('uploadArea');
+        this.fileInput = document.getElementById('fileInput');
+        this.uploadStatus = document.getElementById('uploadStatus');
+        this.welcomeScreen = document.getElementById('welcomeScreen');
     }
 
     bindEvents() {
-        // File upload events
-        this.fileUploadZone.addEventListener('click', () => this.fileInput.click());
-        this.fileUploadZone.addEventListener('dragover', (e) => this.handleDragOver(e));
-        this.fileUploadZone.addEventListener('drop', (e) => this.handleDrop(e));
-        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
-        this.uploadBtn.addEventListener('click', () => this.uploadFile());
-
-        // CMS upload events
-        this.uploadCmsBtn.addEventListener('click', () => this.uploadCmsContent());
-
-        // Chat events
-        this.chatInput.addEventListener('keypress', (e) => {
+        // Chat input events
+        this.chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendMessage();
             }
         });
-        this.sendBtn.addEventListener('click', () => this.sendMessage());
 
-        // Settings events
-        this.settingsBtn.addEventListener('click', () => this.showSettings());
-        this.closeSettings.addEventListener('click', () => this.hideSettings());
-        this.saveSettings.addEventListener('click', () => this.saveApiUrl());
+        this.chatInput.addEventListener('input', () => {
+            this.autoResize();
+            this.updateSendButton();
+        });
+
+        // File upload events
+        this.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.uploadArea.classList.add('dragover');
+        });
+
+        this.uploadArea.addEventListener('dragleave', () => {
+            this.uploadArea.classList.remove('dragover');
+        });
+
+        this.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.uploadArea.classList.remove('dragover');
+            this.handleFileUpload(e.dataTransfer.files);
+        });
+
+        this.fileInput.addEventListener('change', (e) => {
+            this.handleFileUpload(e.target.files);
+        });
     }
 
-    // Settings Management
-    loadSettings() {
-        const savedUrl = localStorage.getItem('chatbot_api_url');
-        if (savedUrl) {
-            this.apiBaseUrl = savedUrl;
-            this.apiUrl.value = savedUrl;
+    autoResize() {
+        this.chatInput.style.height = 'auto';
+        this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 120) + 'px';
+    }
+
+    updateSendButton() {
+        const hasContent = this.chatInput.value.trim().length > 0;
+        this.sendButton.disabled = !hasContent;
+    }
+
+    async handleFileUpload(files) {
+        if (!files.length) return;
+
+        for (const file of files) {
+            await this.uploadFile(file);
         }
     }
 
-    showSettings() {
-        this.settingsPanel.classList.add('show');
-        this.apiUrl.value = this.apiBaseUrl;
-    }
-
-    hideSettings() {
-        this.settingsPanel.classList.remove('show');
-    }
-
-    saveApiUrl() {
-        const newUrl = this.apiUrl.value.trim();
-        if (newUrl) {
-            this.apiBaseUrl = newUrl;
-            localStorage.setItem('chatbot_api_url', newUrl);
-            this.showStatus('API URL updated successfully!', 'success');
-            this.hideSettings();
-            this.checkSystemStatus();
-        } else {
-            this.showStatus('Please enter a valid URL', 'error');
-        }
-    }
-
-    // File Upload Handling
-    handleDragOver(e) {
-        e.preventDefault();
-        this.fileUploadZone.classList.add('dragover');
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
-        this.fileUploadZone.classList.remove('dragover');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.fileInput.files = files;
-            this.handleFileSelect();
-        }
-    }
-
-    handleFileSelect() {
-        if (this.fileInput.files.length > 0) {
-            const file = this.fileInput.files[0];
-            this.uploadBtn.disabled = false;
-            this.uploadBtn.textContent = `Upload ${file.name}`;
-            this.fileUploadZone.classList.add('success-glow');
-        } else {
-            this.uploadBtn.disabled = true;
-            this.uploadBtn.textContent = 'Upload File';
-            this.fileUploadZone.classList.remove('success-glow');
-        }
-    }
-
-    async uploadFile() {
-        if (!this.fileInput.files.length) {
-            this.showStatus('Please select a file first!', 'error');
-            return;
-        }
-
-        const file = this.fileInput.files[0];
+    async uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file);
 
-        this.setUploadingState(true);
-        this.showStatus('📤 Uploading and processing your file...', 'loading');
+        this.showUploadStatus(`Uploading ${file.name}...`, 'info');
 
         try {
             const response = await fetch(`${this.apiBaseUrl}/upload-file`, {
@@ -153,89 +90,42 @@ class ChatbotApp {
             const result = await response.json();
 
             if (response.ok) {
-                this.showStatus(`✅ ${result.message}`, 'success');
-                this.resetFileUpload();
-                this.updateLastUpdated();
-                this.checkSystemStatus();
-                
-                // Add a message to chat
-                this.addSystemMessage(`📁 Successfully uploaded "${result.filename}" with ${result.chunks_count} text chunks!`);
-                
+                this.showUploadStatus(`Successfully uploaded ${file.name}`, 'success');
             } else {
-                this.showStatus(`❌ ${result.message}`, 'error');
-                this.fileUploadZone.classList.add('error-glow');
+                this.showUploadStatus(`Failed to upload ${file.name}: ${result.message}`, 'error');
             }
         } catch (error) {
-            this.showStatus(`❌ Connection error: ${error.message}`, 'error');
-            this.fileUploadZone.classList.add('error-glow');
+            this.showUploadStatus(`Upload failed: ${error.message}`, 'error');
             console.error('Upload error:', error);
-        } finally {
-            this.setUploadingState(false);
         }
     }
 
-    async uploadCmsContent() {
-        const content = this.cmsContent.value.trim();
-        
-        if (!content) {
-            this.showStatus('Please enter some content first!', 'error');
-            return;
-        }
+    showUploadStatus(message, type) {
+        this.uploadStatus.textContent = message;
+        this.uploadStatus.className = `upload-status ${type} show`;
 
-        this.uploadCmsBtn.disabled = true;
-        this.uploadCmsBtn.classList.add('loading');
-        this.uploadCmsBtn.innerHTML = '<span class="loading-spinner"></span> Processing...';
-        
-        this.showStatus('📝 Processing your text content...', 'loading');
-
-        try {
-            const formData = new FormData();
-            formData.append('content', content);
-
-            const response = await fetch(`${this.apiBaseUrl}/upload-cms`, {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                this.showStatus(`✅ ${result.message}`, 'success');
-                this.cmsContent.value = '';
-                this.updateLastUpdated();
-                this.checkSystemStatus();
-                
-                // Add a message to chat
-                this.addSystemMessage(`📝 Successfully processed your text content with ${result.chunks_count} text chunks!`);
-                
-            } else {
-                this.showStatus(`❌ ${result.message}`, 'error');
-            }
-        } catch (error) {
-            this.showStatus(`❌ Connection error: ${error.message}`, 'error');
-            console.error('CMS upload error:', error);
-        } finally {
-            this.uploadCmsBtn.disabled = false;
-            this.uploadCmsBtn.classList.remove('loading');
-            this.uploadCmsBtn.textContent = 'Add Text Content';
-        }
+        setTimeout(() => {
+            this.uploadStatus.classList.remove('show');
+        }, 3000);
     }
 
-    // Chat Functionality
     async sendMessage() {
         const message = this.chatInput.value.trim();
-        
-        if (!message) {
-            this.chatInput.focus();
-            return;
+        if (!message) return;
+
+        // Hide welcome screen on first message
+        if (this.welcomeScreen) {
+            this.welcomeScreen.style.display = 'none';
         }
 
-        // Add user message to chat
-        this.addUserMessage(message);
+        // Add user message
+        this.addMessage(message, 'user');
         this.chatInput.value = '';
+        this.autoResize();
+        this.updateSendButton();
 
         // Show typing indicator
-        const typingIndicator = this.addTypingIndicator();
+        const typingElement = this.addTypingIndicator();
 
         try {
             const formData = new FormData();
@@ -249,91 +139,82 @@ class ChatbotApp {
             const result = await response.json();
 
             // Remove typing indicator
-            typingIndicator.remove();
+            typingElement.remove();
 
             if (response.ok) {
-                this.addBotMessage(result.response);
-                
-                
-                if (result.sources && result.sources.length > 0) {
-                    this.addSourcesMessage(result.sources, result.confidence);
-                }
+                this.addMessage(result.response, 'assistant', result.sources);
             } else {
-                this.addBotMessage(`❌ ${result.response}`, true);
+                this.addMessage(`I encountered an error: ${result.response}`, 'assistant');
             }
         } catch (error) {
-            typingIndicator.remove();
-            this.addBotMessage(`❌ Connection error: ${error.message}. Please check your settings and make sure the backend is running.`, true);
+            typingElement.remove();
+            this.addMessage('Sorry, I couldn\'t process your request. Please check your connection and try again.', 'assistant');
             console.error('Chat error:', error);
         }
     }
 
-    addUserMessage(text) {
-        const messageDiv = this.createMessageElement(text, 'user');
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
+    addMessage(content, role, sources = null) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
 
-    addBotMessage(text, isError = false) {
-        const messageDiv = this.createMessageElement(text, 'bot');
-        if (isError) {
-            messageDiv.querySelector('.message-content').style.borderLeft = '4px solid #e53e3e';
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+
+        const messageText = document.createElement('div');
+        messageText.className = 'message-text';
+        messageText.textContent = content;
+
+        messageContent.appendChild(messageText);
+
+        if (sources && sources.length > 0) {
+            const sourcesDiv = document.createElement('div');
+            sourcesDiv.className = 'message-sources';
+
+            const sourcesTitle = document.createElement('div');
+            sourcesTitle.className = 'sources-title';
+            sourcesTitle.textContent = 'Sources:';
+            sourcesDiv.appendChild(sourcesTitle);
+
+            sources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'source-item';
+                sourceItem.textContent = `📄 ${source.source} (${Math.round(source.similarity_score * 100)}% match)`;
+                sourcesDiv.appendChild(sourceItem);
+            });
+
+            messageContent.appendChild(sourcesDiv);
         }
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
 
-    addSystemMessage(text) {
-        const messageDiv = this.createMessageElement(text, 'bot');
-        messageDiv.querySelector('.message-content').style.background = '#e6fffa';
-        messageDiv.querySelector('.message-content').style.borderLeft = '4px solid #38b2ac';
+        messageDiv.appendChild(messageContent);
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
+
+        this.messages.push({ role, content, sources });
     }
 
     addTypingIndicator() {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message bot-message';
-        messageDiv.innerHTML = `
-            <div class="message-avatar">🤖</div>
-            <div class="message-content">
-                <span class="loading-spinner"></span> Thinking...
+        messageDiv.className = 'message assistant';
+
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'typing-indicator';
+        typingDiv.innerHTML = `
+            <span>Thinking</span>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
             </div>
         `;
+
+        messageContent.appendChild(typingDiv);
+        messageDiv.appendChild(messageContent);
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
-        return messageDiv;
-    }
 
-    addSourcesMessage(sources, confidence) {
-        const sourceTexts = sources.map(source => 
-            `📄 ${source.source} (${source.file_type}) - ${Math.round(source.similarity_score * 100)}% match`
-        ).join('\n');
-        
-        const confidenceEmoji = confidence === 'high' ? '🎯' : confidence === 'medium' ? '👍' : '🤔';
-        const sourcesText = `${confidenceEmoji} Sources (${confidence} confidence):\n${sourceTexts}`;
-        
-        const messageDiv = this.createMessageElement(sourcesText, 'bot');
-        messageDiv.querySelector('.message-content').style.background = '#f0f9ff';
-        messageDiv.querySelector('.message-content').style.fontSize = '0.9em';
-        messageDiv.querySelector('.message-content').style.whiteSpace = 'pre-line';
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
-
-    createMessageElement(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
-        
-        const avatar = sender === 'user' ? '👤' : '🤖';
-        
-        messageDiv.innerHTML = `
-            <div class="message-avatar">${avatar}</div>
-            <div class="message-content">
-                <p>${text.replace(/\n/g, '<br>')}</p>
-            </div>
-        `;
-        
         return messageDiv;
     }
 
@@ -341,86 +222,40 @@ class ChatbotApp {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    // Status and UI Updates
-    async checkSystemStatus() {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/status`);
-            const result = await response.json();
-
-            if (response.ok) {
-                this.serverStatus.textContent = '✅ Connected';
-                this.serverStatus.style.color = '#22543d';
-                this.documentsCount.textContent = result.total_documents || 0;
-                
-                // Clear any error states
-                this.fileUploadZone.classList.remove('error-glow');
-                
-            } else {
-                this.serverStatus.textContent = '❌ Error';
-                this.serverStatus.style.color = '#742a2a';
-            }
-        } catch (error) {
-            this.serverStatus.textContent = '❌ Offline';
-            this.serverStatus.style.color = '#742a2a';
-            console.log('Status check failed - backend might be offline');
-        }
+    startNewChat() {
+        this.messages = [];
+        this.chatMessages.innerHTML = '';
+        this.welcomeScreen.style.display = 'flex';
     }
 
-    showStatus(message, type) {
-        this.uploadStatus.textContent = message;
-        this.uploadStatus.className = `status-message ${type} show`;
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            this.uploadStatus.classList.remove('show');
-        }, 5000);
-    }
-
-    setUploadingState(isUploading) {
-        this.uploadBtn.disabled = isUploading;
-        this.uploadBtn.classList.toggle('loading', isUploading);
-        
-        if (isUploading) {
-            this.uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
-        } else {
-            this.uploadBtn.textContent = this.fileInput.files.length ? 
-                `Upload ${this.fileInput.files[0].name}` : 'Upload File';
-        }
-    }
-
-    resetFileUpload() {
-        this.fileInput.value = '';
-        this.uploadBtn.disabled = true;
-        this.uploadBtn.textContent = 'Upload File';
-        this.fileUploadZone.classList.remove('success-glow', 'error-glow');
-    }
-
-    updateLastUpdated() {
-        const now = new Date().toLocaleTimeString();
-        this.lastUpdated.textContent = now;
+    sendExamplePrompt(prompt) {
+        this.chatInput.value = prompt;
+        this.updateSendButton();
+        this.sendMessage();
     }
 }
 
-// Initialize the chatbot when the page loads
+// Initialize app
+let app;
 document.addEventListener('DOMContentLoaded', () => {
-    window.chatbot = new ChatbotApp();
-    
-    // Check status every 30 seconds
-    setInterval(() => {
-        window.chatbot.checkSystemStatus();
-    }, 30000);
-    
-    console.log('🚀 Chatbot is ready!');
+    app = new QuickDocsChat();
 });
 
-window.testConnection = async function() {
-    console.log('Testing connection to:', window.chatbot.apiBaseUrl);
-    await window.chatbot.checkSystemStatus();
-};
+// Global functions for HTML onclick events
+function startNewChat() {
+    if (app) {
+        app.startNewChat();
+    }
+}
 
-window.updateApiUrl = function(url) {
-    window.chatbot.apiBaseUrl = url;
-    localStorage.setItem('chatbot_api_url', url);
-    console.log('API URL updated to:', url);
-    window.chatbot.checkSystemStatus();
-};// JavaScript
+function sendExamplePrompt(prompt) {
+    if (app) {
+        app.sendExamplePrompt(prompt);
+    }
+}
+
+function sendMessage() {
+    if (app) {
+        app.sendMessage();
+    }
+}

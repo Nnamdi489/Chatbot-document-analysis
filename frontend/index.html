@@ -5,111 +5,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuickDocs - Smart Document Chatbot</title>
+    <title>QuickDocs</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header Section -->
-        <header class="header">
-            <h1>🤖 QuickDocs</h1>
-            <p>Upload your documents and ask questions about them!</p>
-        </header>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" onclick="startNewChat()">
+                    <span>+</span>
+                    New Chat
+                </button>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-title">Upload Documents</div>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-text">Drop files or click to upload</div>
+                    <div class="file-types">PDF, TXT, CSV supported</div>
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.csv" multiple>
+                </div>
+                <div class="upload-status" id="uploadStatus"></div>
+            </div>
+        </div>
 
         <!-- Main Content -->
-        <main class="main-content">
-            <!-- File Upload Section -->
-            <section class="upload-section">
-                <h2>📁 Upload Your Documents</h2>
-                
-                <!-- File Upload Area -->
-                <div class="upload-area">
-                    <div class="file-upload-zone" id="fileUploadZone">
-                        <div class="upload-icon">📄</div>
-                        <p>Drag & drop files here or click to browse</p>
-                        <p class="file-types">Supports: PDF, CSV, TXT files</p>
-                        <input type="file" id="fileInput" accept=".pdf,.csv,.txt" hidden>
-                        <button class="upload-btn" id="uploadBtn" disabled>Upload File</button>
-                    </div>
-                    
-                    <!-- CMS Content Area -->
-                    <div class="cms-section">
-                        <h3>📝 Or paste text content:</h3>
-                        <textarea id="cmsContent" placeholder="Paste your text content, FAQs, or any information here..."></textarea>
-                        <button class="upload-btn" id="uploadCmsBtn">Add Text Content</button>
-                    </div>
-                </div>
-                
-                <!-- Upload Status -->
-                <div id="uploadStatus" class="status-message"></div>
-            </section>
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="chat-title">QuickDocs</div>
+                <div class="model-info">Document Analysis AI</div>
+            </div>
 
-            <!-- Chat Section -->
-            <section class="chat-section">
-                <h2>💬 Chat with Your Documents</h2>
-                
-                <!-- Chat Container -->
-                <div class="chat-container">
-                    <!-- Messages Area -->
-                    <div id="chatMessages" class="chat-messages">
-                        <div class="message bot-message">
-                            <div class="message-avatar">🤖</div>
-                            <div class="message-content">
-                                <p>Hello! I'm your document assistant. Upload some documents and I'll help you find information from them. Try asking questions like:</p>
-                                <ul>
-                                    <li>"What is the vacation policy?"</li>
-                                    <li>"How do I contact support?"</li>
-                                    <li>"What are the key features?"</li>
-                                </ul>
-                            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h1 class="welcome-title">QuickDocs</h1>
+                    <p class="welcome-subtitle">Upload documents and ask questions about their content. Get instant, accurate answers from your files.</p>
+                    
+                    <div class="example-prompts">
+                        <div class="example-prompt" onclick="sendExamplePrompt('What is the main topic of the document?')">
+                            <div class="prompt-title">Summarize content</div>
+                            <div class="prompt-description">What is the main topic of the document?</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExamplePrompt('Find information about policies')">
+                            <div class="prompt-title">Search policies</div>
+                            <div class="prompt-description">Find information about policies</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExamplePrompt('What are the key points?')">
+                            <div class="prompt-title">Extract key points</div>
+                            <div class="prompt-description">What are the key points?</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExamplePrompt('How do I contact support?')">
+                            <div class="prompt-title">Find contact info</div>
+                            <div class="prompt-description">How do I contact support?</div>
                         </div>
                     </div>
-                    
-                    <!-- Chat Input -->
-                    <div class="chat-input-area">
-                        <div class="input-container">
-                            <input type="text" id="chatInput" placeholder="Ask a question about your documents...">
-                            <button id="sendBtn" class="send-btn">Send</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Status Footer -->
-        <footer class="status-footer">
-            <div class="status-grid">
-                <div class="status-item">
-                    <span class="status-label">Server Status:</span>
-                    <span id="serverStatus" class="status-value">Connecting...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Documents:</span>
-                    <span id="documentsCount" class="status-value">0</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Last Updated:</span>
-                    <span id="lastUpdated" class="status-value">Never</span>
                 </div>
             </div>
-        </footer>
-    </div>
 
-    <!-- Settings Panel (Hidden by default) -->
-    <div id="settingsPanel" class="settings-panel">
-        <h3>⚙️ Settings</h3>
-        <div class="setting-item">
-            <label for="apiUrl">Backend URL:</label>
-            <input type="text" id="apiUrl" placeholder="https://your-ngrok-url.ngrok.io">
-            <button id="saveSettings">Save</button>
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="chatInput" 
+                        class="chat-input" 
+                        placeholder="Ask a question about your documents..."
+                        rows="1"
+                    ></textarea>
+                    <button class="send-button" id="sendButton" onclick="sendMessage()">
+                        <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m5 12 7-7 7 7"/>
+                            <path d="m12 19 0-14"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
-        <button class="close-settings" id="closeSettings">Close</button>
     </div>
-
-    <!-- Settings Button -->
-    <button class="settings-btn" id="settingsBtn">⚙️</button>
 
     <script src="chatbot.js"></script>
 </body>
 </html>
-
