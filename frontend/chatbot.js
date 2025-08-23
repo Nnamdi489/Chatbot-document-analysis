@@ -6,7 +6,7 @@
 class QuickDocsChat {
     constructor() {
         
-        this.apiBaseUrl = 'https://386d4f2651ad.ngrok-free.app/';
+        this.apiBaseUrl = 'https://5a8d6d7d0c14.ngrok-free.app/';
         this.messages = [];
         this.initializeElements();
         this.bindEvents();
